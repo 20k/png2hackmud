@@ -1,0 +1,524 @@
+#include <iostream>
+#include <SFML/Graphics.hpp>
+#include <vec/vec.hpp>
+#include <map>
+#include <cstdlib>
+
+using namespace std;
+
+float col2bright(vec3f c1)
+{
+    return c1.x() * 0.299 + c1.y() * 0.587 + c1.z() * 0.114;
+}
+
+char col2ascii_full(vec3f c1, float brightness_scale = 1.f)
+{
+    float bright = col2bright(c1) * brightness_scale;
+
+    bright /= 255.f;
+
+    bright = clamp(bright, 0.f, 1.f);
+
+    std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,^'. ";
+
+    int len = str.length();
+
+    int id = round(bright * (len - 1));
+
+    id = clamp(id, 0, len-1);
+
+    return str[str.length() - id - 1];
+}
+
+///" .:-=+*#%@"
+
+char col2ascii_reduced(vec3f c1, float brightness_scale = 1.f)
+{
+    float bright = col2bright(c1) * brightness_scale;
+
+    bright /= 255.f;
+
+    bright = clamp(bright, 0.f, 1.f);
+
+    //std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,^'. ";
+
+    std::string str = " .-=+*#%@";
+
+    int len = str.length();
+
+    int id = round(bright * (len - 1));
+
+    id = clamp(id, 0, len-1);
+
+    return str[id];
+}
+
+char col2ascii(vec3f c1, float brightness_scale)
+{
+    return col2ascii_full(c1, brightness_scale);
+}
+
+float get_col_err(vec3f c1, vec3f c2)
+{
+    /*int w = 0;
+    float m = 0;
+
+    for(int i=0; i<3; i++)
+    {
+        if(c1.v[i] > m)
+        {
+            w = i;
+            m = c1.v[i];
+        }
+    }*/
+
+    vec3f rel = c1 - c2;
+
+    rel = fabs(rel);
+
+    return dot(rel, rel);
+
+    //return fabs(c1.v[w] - c2.v[w]);
+}
+
+char get_nearest_col(sf::Color c, const std::map<char, vec3f>& colour_map)
+{
+    vec3f sf_c = {c.r, c.g, c.b};
+
+    //sf_c = pow(sf_c, 2.2f);
+
+
+    ///we should probably figure out how to make this gamma correct or w/e
+    float min_err = 50;
+    float min_err_sq = min_err * min_err;
+
+    char fc = 'A';
+    float found_err = FLT_MAX;
+
+    for(auto& i : colour_map)
+    {
+        vec3f o = i.second;
+
+        float err = get_col_err(sf_c, o);
+
+        if(err < found_err)
+        {
+            fc = i.first;
+            found_err = err;
+        }
+    }
+
+    return fc;
+}
+
+
+char get_nearest_c(vec3f c, const std::map<char, vec3f>& colour_map)
+{
+    return get_nearest_col(sf::Color(c.x(), c.y(), c.z()), colour_map);
+}
+
+///so its graygraygray red red green green blue blue
+char get_nearest_col_q(sf::Color c, const std::map<char, vec3f>& colour_map)
+{
+    int w = 0;
+    float h = c.r;
+
+    if(c.g > h)
+    {
+        w = 1;
+        h = c.g;
+    }
+
+    if(c.b > h)
+    {
+        w = 2;
+        h = c.b;
+    }
+
+    std::vector<char> cols;
+
+    cols.push_back(get_nearest_c({0,0,0}, colour_map));
+    cols.push_back(get_nearest_c({128, 128, 128}, colour_map));
+    cols.push_back(get_nearest_c({255, 255, 255}, colour_map));
+
+
+    cols.push_back(get_nearest_c({128, 0, 0}, colour_map));
+    cols.push_back(get_nearest_c({255, 0, 0}, colour_map));
+
+    cols.push_back(get_nearest_c({0, 128, 0}, colour_map));
+    cols.push_back(get_nearest_c({0, 255, 0}, colour_map));
+
+    cols.push_back(get_nearest_c({0, 0, 128}, colour_map));
+    cols.push_back(get_nearest_c({0, 0, 255}, colour_map));
+
+    float brightness = 0.299*c.r + 0.587*c.g + 0.114*c.b;
+    int blevel = 0;
+
+    if(brightness > (128 + 255)/2.f)
+    {
+        blevel = 1;
+    }
+
+    if(brightness < 128/2.f)
+    {
+        return cols[0];
+    }
+
+
+    return cols[w*2 + blevel + 3];
+}
+
+#define SPACE ""
+
+struct hackmud_char
+{
+    char c = '@';
+    char colour = 'A';
+    bool is_newline = false;
+    bool is_merged = false;
+    bool forward_merge = false;
+    bool backward_merge = false;
+
+    std::string build()
+    {
+        //std::string ret = std::string("`") + std::string(1, colour) + std::string(1, c) + " `";
+
+        std::string ret;
+
+        if(!backward_merge && !forward_merge)
+        {
+            ret = std::string("`") + std::string(1, colour) + std::string(1, c) + SPACE + "`";
+        }
+
+        if(!backward_merge && forward_merge)
+        {
+            ret = std::string("`") + std::string(1, colour) + std::string(1, c) + SPACE;
+        }
+
+        if(backward_merge && !forward_merge)
+        {
+            ret = std::string(1, c) + SPACE + "`";
+            //ret = std::string(1, 'B') + " `";
+        }
+
+        if(forward_merge && backward_merge)
+        {
+            ret = std::string(1, c) + SPACE;
+            //ret = std::string(1, 'M') + " ";
+        }
+
+
+        if(is_merged)
+        {
+            //ret = std::string(1, c) + " ";
+        }
+
+        if(is_newline)
+        {
+            ret = ret + SPACE + "\\n";
+        }
+
+        return ret;
+    }
+
+    void try_merge(hackmud_char& prev)
+    {
+        if(prev.colour == colour && !prev.is_newline)
+        {
+            is_merged = true;
+            prev.forward_merge = true;
+            backward_merge = true;
+
+            //printf("%c %c ", prev.colour, colour);
+        }
+    }
+
+    void eliminate_single(hackmud_char& prev, hackmud_char& forw)
+    {
+        bool double_equal = false;
+
+        if(!prev.is_newline && !forw.is_newline)
+        {
+            if(prev.colour != colour && forw.colour != colour)
+                double_equal = true;
+        }
+
+        if(prev.is_newline && !forw.is_newline)
+        {
+            if(colour != forw.colour)
+                double_equal = true;
+        }
+
+        if(!prev.is_newline && forw.is_newline)
+        {
+            if(colour != prev.colour)
+                double_equal = true;
+        }
+
+
+        //if(prev.colour != colour && forw.colour != colour)
+        if(double_equal)
+        {
+            if(!prev.is_newline)
+                colour = prev.colour;
+            else
+                colour = forw.colour;
+        }
+    }
+};
+
+
+std::map<char, vec3f> quantise_colour_map(std::map<char, vec3f>& cmap)
+{
+    int grays = 3;
+
+    std::vector<char> cols;
+
+    cols.push_back(get_nearest_c({0,0,0}, cmap));
+    cols.push_back(get_nearest_c({128, 128, 128}, cmap));
+    cols.push_back(get_nearest_c({255, 255, 255}, cmap));
+
+
+    cols.push_back(get_nearest_c({128, 0, 0}, cmap));
+    cols.push_back(get_nearest_c({255, 0, 0}, cmap));
+
+    cols.push_back(get_nearest_c({0, 128, 0}, cmap));
+    cols.push_back(get_nearest_c({0, 255, 0}, cmap));
+
+    cols.push_back(get_nearest_c({0, 0, 128}, cmap));
+    cols.push_back(get_nearest_c({0, 0, 255}, cmap));
+
+    std::map<char, vec3f> cm;
+
+    for(auto& i : cols)
+    {
+        cm[i] = cmap[i];
+    }
+
+    return cm;
+}
+
+int main()
+{
+    sf::Image image;
+    image.loadFromFile("Test.png");
+
+    std::map<char, vec3f> colour_map;
+
+    ///sigh
+    colour_map['A'] = {240, 240, 240};
+    colour_map['B'] = {234, 241, 241};
+    colour_map['C'] = {206, 202, 203};
+    colour_map['D'] = {243, 8, 8};
+    colour_map['E'] = {242, 164, 160};
+    colour_map['F'] = {243, 166, 3};
+    colour_map['G'] = {243, 231, 130};
+    colour_map['H'] = {243, 241, 7};
+    colour_map['I'] = {243, 243, 113};
+    colour_map['J'] = {243, 243, 7};
+    colour_map['K'] = {242, 242, 193};
+    colour_map['L'] = {42, 243, 8};
+    colour_map['M'] = {231, 243, 204};
+    colour_map['N'] = {5, 243, 243};
+    colour_map['O'] = {179, 243, 243};
+    colour_map['P'] = {8, 143, 242};
+    colour_map['Q'] = {213, 242, 243};
+    colour_map['R'] = {4, 8, 243};
+    colour_map['S'] = {149, 228, 242};
+    colour_map['T'] = {237, 60, 242};
+    colour_map['U'] = {241, 236, 241};
+    colour_map['V'] = {242, 6, 242};
+    colour_map['W'] = {241, 186, 241};
+    colour_map['X'] = {241, 6, 142};
+    colour_map['Y'] = {240, 123, 195};
+    colour_map['Z'] = {11, 16, 40};
+
+    colour_map['a'] = {1,1,1};
+    colour_map['b'] = {60,60,60};
+    colour_map['c'] = {118,118,118};
+    colour_map['d'] = {158,1,1};
+    colour_map['e'] = {185,49,49};
+    colour_map['f'] = {211,79,2};
+    colour_map['g'] = {138,88,50};
+    colour_map['h'] = {216,163,2};
+    colour_map['i'] = {232,185,71};
+    colour_map['j'] = {186,188,1};
+    colour_map['k'] = {73,90,34};
+    colour_map['l'] = {38,183,1};
+    colour_map['m'] = {33,56,26};
+    colour_map['n'] = {1,87,100};
+    colour_map['o'] = {46,75,79};
+    colour_map['p'] = {2,135,213};
+    colour_map['q'] = {51,97,127};
+    colour_map['r'] = {2,2,122};
+    colour_map['s'] = {82,143,207};
+    colour_map['t'] = {106,27,158};
+    colour_map['u'] = {68,46,81};
+    colour_map['v'] = {176,1,123};
+    colour_map['w'] = {192,52,160};
+    colour_map['x'] = {173,1,37};
+    colour_map['y'] = {140,42,72};
+    colour_map['z'] = {15,17,20};
+
+    //std::map<char, vec3f> quantised_colour_map = quantise_colour_map(colour_map);
+
+    //colour_map = quantised_colour_map;
+
+    /*for(auto& i : colour_map)
+    {
+        char tl = tolower(i.first);
+
+        if(tl == i.first)
+            continue;
+
+        colour_map[tl] = i.second/2.f;
+    }*/
+
+    int max_w = 80;
+    int max_h = 50;
+
+    sf::RenderTexture rtex;
+    rtex.setSmooth(true);
+
+    rtex.create(max_w, max_h);
+
+    sf::Sprite spr;
+    sf::Texture tex;
+    tex.setSmooth(true);
+
+    tex.loadFromImage(image);
+    spr.setTexture(tex);
+
+    spr.setScale((float)max_w/image.getSize().x, (float)max_h/image.getSize().y);
+
+    rtex.draw(spr);
+    rtex.display();
+
+    sf::Image nimage;
+    nimage = rtex.getTexture().copyToImage();
+
+    nimage.saveToFile("Fname.png");
+
+    std::vector<hackmud_char> chars;
+
+    for(int y=0; y<nimage.getSize().y; y++)
+    {
+        for(int x=0; x<nimage.getSize().x; x++)
+        {
+            sf::Color col = nimage.getPixel(x, y);
+
+            char nearest_col = get_nearest_col(col, colour_map);
+
+            /*std::string rstr = std::string("`") + std::string(1, nearest_col) + "@ " + "`";
+
+            if(x == nimage.getSize().x - 1)
+                rstr = rstr + "\\n";
+
+            out.push_back(rstr);*/
+
+            vec3f real_col = {col.r, col.g, col.b};
+            vec3f cur_col = colour_map[nearest_col];
+
+            float brightness_scale = col2bright(real_col) / col2bright(cur_col);
+
+            brightness_scale = clamp(brightness_scale, 0.f, 10.f);
+
+            if(isnan(brightness_scale) || isinf(brightness_scale))
+                brightness_scale = 1.f;
+
+            hackmud_char hc;
+
+            hc.is_newline = x == nimage.getSize().x - 1;
+            hc.c = '@';
+            hc.c = col2ascii({col.r, col.g, col.b}, brightness_scale);
+
+            hc.colour = nearest_col;
+
+            if(chars.size() != 0)
+            {
+                hc.try_merge(chars.back());
+            }
+
+            chars.push_back(hc);
+        }
+    }
+
+    for(int i=1; i<chars.size()-1; i++)
+    {
+        if(SPACE == "")
+            chars[i].eliminate_single(chars[i-1], chars[i+1]);
+    }
+
+    for(int i=1; i<chars.size(); i++)
+    {
+        chars[i].try_merge(chars[i-1]);
+    }
+
+    std::vector<std::string> out;
+
+    sf::Font font;
+
+    font.loadFromFile("VeraMono.ttf");
+
+    sf::Text txt;
+    txt.setFont(font);
+    txt.setCharacterSize(10);
+    txt.setString("A");
+
+    for(auto& i : chars)
+    {
+        out.push_back(i.build());
+    }
+
+    for(auto& i : out)
+    {
+        std::cout << i;
+    }
+
+    sf::RenderWindow win;
+    win.create(sf::VideoMode(800, 600), "heheheh");
+
+    while(win.isOpen())
+    {
+        sf::Event event;
+
+        while(win.pollEvent(event))
+        {
+            if(event.type == sf::Event::Closed)
+            {
+                win.close();
+            }
+        }
+
+        for(int y=0; y<max_h; y++)
+        {
+            for(int x=0; x<max_w; x++)
+            {
+                hackmud_char hc = chars[y*max_w + x];
+
+                std::string rs = std::string(1,hc.c);
+
+                if(hc.is_newline)
+                {
+                    rs += "\n";
+                }
+
+                vec3f fc = colour_map[hc.colour];
+                sf::Color sc = sf::Color(fc.x(), fc.y(), fc.z());
+
+                txt.setPosition(x*10, y*10);
+                txt.setString(rs);
+                txt.setColor(sc);
+
+                win.draw(txt);
+            }
+        }
+
+        win.display();
+        win.clear();
+    }
+
+    //std::cout << out << std::endl;
+
+    return 0;
+}
