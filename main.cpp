@@ -3,6 +3,7 @@
 #include <vec/vec.hpp>
 #include <map>
 #include <cstdlib>
+#include <algorithm>
 
 using namespace std;
 
@@ -50,7 +51,7 @@ char col2ascii_full(vec3f c1, float brightness_scale = 1.f)
 
     bright = clamp(bright, 0.f, 1.f);
 
-    std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,^'. ";
+    std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;,^'. ";
 
     int len = str.length();
 
@@ -323,11 +324,27 @@ std::map<char, vec3f> quantise_colour_map(std::map<char, vec3f>& cmap)
     return cm;
 }
 
-int main()
+int get_num_transitions(const std::vector<std::string>& out)
 {
-    sf::Image image;
-    image.loadFromFile("Test.png");
+    int c = 0;
 
+    for(auto& i : out)
+    {
+        size_t n = std::count(i.begin(), i.end(), '`');
+
+        c += n;
+    }
+
+    if(c % 2 != 0)
+    {
+        printf("warning, mismatched `\n");
+    }
+
+    return c / 2;
+}
+
+std::map<char, vec3f> get_cmap()
+{
     std::map<char, vec3f> colour_map;
 
     ///sigh
@@ -385,6 +402,28 @@ int main()
     colour_map['y'] = {140,42,72};
     colour_map['z'] = {15,17,20};
 
+    return colour_map;
+}
+
+std::vector<hackmud_char> get_full_image(const sf::Image& nimage, int max_w = 80, int max_h = 50, float frac = 0.f)
+{
+    std::map<char, vec3f> colour_map = get_cmap();
+
+    int num_to_erase = 0;
+
+    //float erase_prob = (float)num_to_erase / colour_map.size();
+
+    float erase_prob = frac;
+
+    for(auto it = colour_map.begin(); it != colour_map.end(); it++)
+    {
+        if(randf_s(0.f, 1.f) < erase_prob)
+        {
+            colour_map.erase(it);
+            it--;
+        }
+    }
+
     //std::map<char, vec3f> quantised_colour_map = quantise_colour_map(colour_map);
 
     //colour_map = quantised_colour_map;
@@ -399,30 +438,7 @@ int main()
         colour_map[tl] = i.second/2.f;
     }*/
 
-    int max_w = 80;
-    int max_h = 50;
-
-    sf::RenderTexture rtex;
-    rtex.setSmooth(true);
-
-    rtex.create(max_w, max_h);
-
-    sf::Sprite spr;
-    sf::Texture tex;
-    tex.setSmooth(true);
-
-    tex.loadFromImage(image);
-    spr.setTexture(tex);
-
-    spr.setScale((float)max_w/image.getSize().x, (float)max_h/image.getSize().y);
-
-    rtex.draw(spr);
-    rtex.display();
-
-    sf::Image nimage;
-    nimage = rtex.getTexture().copyToImage();
-
-    nimage.saveToFile("Fname.png");
+    //nimage.saveToFile("Fname.png");
 
     std::vector<hackmud_char> chars;
 
@@ -433,13 +449,6 @@ int main()
             sf::Color col = nimage.getPixel(x, y);
 
             char nearest_col = get_nearest_col(col, colour_map);
-
-            /*std::string rstr = std::string("`") + std::string(1, nearest_col) + "@ " + "`";
-
-            if(x == nimage.getSize().x - 1)
-                rstr = rstr + "\\n";
-
-            out.push_back(rstr);*/
 
             vec3f real_col = {col.r, col.g, col.b};
             vec3f cur_col = colour_map[nearest_col];
@@ -479,6 +488,93 @@ int main()
         chars[i].try_merge(chars[i-1]);
     }
 
+    return chars;
+}
+
+std::vector<hackmud_char> limited_transition_bound(const std::string& img, int max_w, int max_h, int transition_limit = 400)
+{
+    int num_transitions = -1;
+
+    int max_attemps = 50;
+    int attempts = 0;
+
+    std::vector<std::string> out;
+    std::vector<hackmud_char> chars_ret;
+
+    sf::Image image;
+    image.loadFromFile(img.c_str());
+
+
+    sf::RenderTexture rtex;
+    rtex.setSmooth(true);
+
+    rtex.create(max_w, max_h);
+
+    sf::Sprite spr;
+    sf::Texture tex;
+    tex.setSmooth(true);
+
+    tex.loadFromImage(image);
+    spr.setTexture(tex);
+
+    spr.setScale((float)max_w/image.getSize().x, (float)max_h/image.getSize().y);
+
+    rtex.draw(spr);
+    rtex.display();
+
+    sf::Image nimage;
+    nimage = rtex.getTexture().copyToImage();
+
+    int search_depth = 10;
+
+    float valid_val = 1.f;
+    float invalid_val = 0.f;
+
+    //while((num_transitions == -1 || num_transitions >= transition_limit))
+    for(int i=0; i<search_depth; i++)
+    {
+        //float elim = (float)attempts / max_attemps;
+
+        float elim = (valid_val + invalid_val) / 2.f;
+
+        chars_ret = get_full_image(nimage, max_w, max_h, elim);
+
+        out.clear();
+
+        for(auto& i : chars_ret)
+        {
+            out.push_back(i.build());
+        }
+
+        num_transitions = get_num_transitions(out);
+
+        printf("na %f %i\n", elim, num_transitions);
+
+        if(num_transitions < transition_limit)
+        {
+            valid_val = elim;
+        }
+        if(num_transitions >= transition_limit)
+        {
+            invalid_val = elim;
+        }
+
+        if(num_transitions > transition_limit - 30 && num_transitions < transition_limit)
+        {
+            return chars_ret;
+        }
+    }
+
+    return chars_ret;
+}
+
+int main()
+{
+    std::map<char, vec3f> colour_map = get_cmap();
+
+    int max_w = 80;
+    int max_h = 50;
+
     std::vector<std::string> out;
 
     sf::Font font;
@@ -490,15 +586,25 @@ int main()
     txt.setCharacterSize(10);
     txt.setString("A");
 
+    auto chars = limited_transition_bound("test_doge.png", max_w, max_h, 300);
+
     for(auto& i : chars)
     {
         out.push_back(i.build());
     }
 
+    std::cout << std::endl;
+
     for(auto& i : out)
     {
         std::cout << i;
     }
+
+    std::cout << std::endl;
+
+    int num_transitions = get_num_transitions(out);
+
+    std::cout << "num transitions " << num_transitions << std::endl;
 
     sf::RenderWindow win;
     win.create(sf::VideoMode(800, 600), "heheheh");
