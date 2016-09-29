@@ -51,7 +51,7 @@ char col2ascii_full(vec3f c1, float brightness_scale = 1.f)
 
     bright = clamp(bright, 0.f, 1.f);
 
-    std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;,^'. ";
+    std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft|()1{}[]?-_+~<>i!lI;,^' ";
 
     int len = str.length();
 
@@ -572,8 +572,8 @@ int main()
 {
     std::map<char, vec3f> colour_map = get_cmap();
 
-    int max_w = 80;
-    int max_h = 50;
+    int max_w = 60;
+    int max_h = 40;
 
     std::vector<std::string> out;
 
