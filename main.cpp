@@ -6,6 +6,37 @@
 
 using namespace std;
 
+float xyz_to_lab(float c)
+{
+    return c > 216.0 / 24389.0 ? pow(c, 1.0 / 3.0) : c * (841.0/108.0) + (4.0/29.0);
+}
+
+///0 -> 1
+vec3f linear_rgb_to_lab(vec3f in)
+{
+    float R = in.x();
+    float G = in.y();
+    float B = in.z();
+
+    float X, Y, Z;
+
+    // linear sRGB -> normalized XYZ (X,Y,Z are all in 0...1)
+
+    X = xyz_to_lab(R * (10135552.0/23359437.0) + G * (8788810.0/23359437.0) + B * (4435075.0/23359437.0));
+    Y = xyz_to_lab(R * (871024.0/4096299.0)    + G * (8788810.0/12288897.0) + B * (887015.0/12288897.0));
+    Z = xyz_to_lab(R * (158368.0/8920923.0)    + G * (8788810.0/80288307.0) + B * (70074185.0/80288307.0));
+
+    // normalized XYZ -> Lab
+
+    vec3f r;
+
+    r.x() = Y * 116.0 - 16.0;
+    r.y() = (X - Y) * 500.0;
+    r.z() = (Y - Z) * 200.0;
+
+    return r;
+}
+
 float col2bright(vec3f c1)
 {
     return c1.x() * 0.299 + c1.y() * 0.587 + c1.z() * 0.114;
@@ -19,7 +50,7 @@ char col2ascii_full(vec3f c1, float brightness_scale = 1.f)
 
     bright = clamp(bright, 0.f, 1.f);
 
-    std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,^'. ";
+    std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,^'. ";
 
     int len = str.length();
 
@@ -60,25 +91,19 @@ char col2ascii(vec3f c1, float brightness_scale)
 
 float get_col_err(vec3f c1, vec3f c2)
 {
-    /*int w = 0;
-    float m = 0;
+    vec3f linear_srgb_c1 = pow(c1/255.f, 1.f/2.2f);
+    vec3f linear_srgb_c2 = pow(c2/255.f, 1.f/2.2f);
 
-    for(int i=0; i<3; i++)
-    {
-        if(c1.v[i] > m)
-        {
-            w = i;
-            m = c1.v[i];
-        }
-    }*/
+    vec3f lab_c1 = linear_rgb_to_lab(linear_srgb_c1);
+    vec3f lab_c2 = linear_rgb_to_lab(linear_srgb_c2);
+
+    vec3f r1 = lab_c1 - lab_c2;
+
+    return dot(r1, r1);
 
     vec3f rel = c1 - c2;
 
-    rel = fabs(rel);
-
     return dot(rel, rel);
-
-    //return fabs(c1.v[w] - c2.v[w]);
 }
 
 char get_nearest_col(sf::Color c, const std::map<char, vec3f>& colour_map)
