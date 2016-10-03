@@ -51,7 +51,7 @@ char col2ascii_full(vec3f c1, float brightness_scale = 1.f)
 
     bright = clamp(bright, 0.f, 1.f);
 
-    std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft|()1{}[]?-_+~<>i!lI;,^' ";
+    std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft|()1{}[]?_~<>ilI;,^' ";
 
     int len = str.length();
 
@@ -477,11 +477,14 @@ std::vector<hackmud_char> get_full_image(const sf::Image& nimage, int max_w = 80
         }
     }
 
+    ///appears to be fixed in live
+    #ifdef FIX_ONECHARACTER_BUG
     for(int i=1; i<chars.size()-1; i++)
     {
         if(SPACE == "")
             chars[i].eliminate_single(chars[i-1], chars[i+1]);
     }
+    #endif
 
     for(int i=1; i<chars.size(); i++)
     {
