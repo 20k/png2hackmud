@@ -40,6 +40,12 @@ vec3f linear_rgb_to_lab(vec3f in)
 
 float col2bright(vec3f c1)
 {
+    c1 = c1 / 255.f;
+
+    c1 = pow(c1, 1/2.2f);
+
+    c1 = c1 * 255.f;
+
     return c1.x() * 0.299 + c1.y() * 0.587 + c1.z() * 0.114;
 }
 
@@ -51,7 +57,9 @@ char col2ascii_full(vec3f c1, float brightness_scale = 1.f)
 
     bright = clamp(bright, 0.f, 1.f);
 
-    std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft|()1{}[]?_~<>ilI;,^' ";
+    //bright = sqrt(bright);
+
+    std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLJUYXzcvunxrjft|()1{}[]?_~<>ilI;,^' ";
 
     int len = str.length();
 
@@ -74,7 +82,9 @@ char col2ascii_reduced(vec3f c1, float brightness_scale = 1.f)
 
     //std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,^'. ";
 
-    std::string str = " .-=+*#%@";
+    std::string str = " -+=*%#@";
+
+    //std::string str = " ,-=+*%#@";
 
     int len = str.length();
 
@@ -87,7 +97,7 @@ char col2ascii_reduced(vec3f c1, float brightness_scale = 1.f)
 
 char col2ascii(vec3f c1, float brightness_scale)
 {
-    return col2ascii_full(c1, brightness_scale);
+    return col2ascii_reduced(c1, brightness_scale);
 }
 
 float get_col_err(vec3f c1, vec3f c2)
@@ -415,6 +425,8 @@ std::vector<hackmud_char> get_full_image(const sf::Image& nimage, int max_w = 80
 
     float erase_prob = frac;
 
+    erase_prob = 0.f;
+
     for(auto it = colour_map.begin(); it != colour_map.end(); it++)
     {
         if(randf_s(0.f, 1.f) < erase_prob)
@@ -528,7 +540,9 @@ std::vector<hackmud_char> limited_transition_bound(const std::string& img, int m
     sf::Image nimage;
     nimage = rtex.getTexture().copyToImage();
 
-    int search_depth = 10;
+    nimage.saveToFile("TOUT.png");
+
+    int search_depth = 5;
 
     float valid_val = 1.f;
     float invalid_val = 0.f;
@@ -575,8 +589,8 @@ int main()
 {
     std::map<char, vec3f> colour_map = get_cmap();
 
-    int max_w = 60;
-    int max_h = 40;
+    //int max_w = 200/4;
+    //int max_h = 100/4;
 
     std::vector<std::string> out;
 
@@ -589,7 +603,19 @@ int main()
     txt.setCharacterSize(10);
     txt.setString("A");
 
-    auto chars = limited_transition_bound("test_doge.png", max_w, max_h, 300);
+    std::string fname = "mona_lisa.jpg";
+    //std::string fname = "rick2.jpg";
+    ///stupid hack
+    sf::Image img;
+    img.loadFromFile(fname);
+
+    int max_w = img.getSize().x;
+    int max_h = img.getSize().y;
+
+    max_w /= 4.5f;
+    max_h /= 6.5f;
+
+    auto chars = limited_transition_bound(fname, max_w, max_h, 300);
 
     for(auto& i : chars)
     {
@@ -610,7 +636,11 @@ int main()
     std::cout << "num transitions " << num_transitions << std::endl;
 
     sf::RenderWindow win;
-    win.create(sf::VideoMode(800, 600), "heheheh");
+    win.create(sf::VideoMode(1600, 1000), "heheheh");
+
+    std::cout << "\n\n\n\n\n\n";
+
+    bool once = true;
 
     while(win.isOpen())
     {
@@ -640,13 +670,21 @@ int main()
                 vec3f fc = colour_map[hc.colour];
                 sf::Color sc = sf::Color(fc.x(), fc.y(), fc.z());
 
+                if(once)
+                std::cout << rs;
+
                 txt.setPosition(x*10, y*10);
                 txt.setString(rs);
                 txt.setColor(sc);
 
                 win.draw(txt);
             }
+
+            //if(once)
+            //std::cout << std::endl;
         }
+
+        once = false;
 
         win.display();
         win.clear();
