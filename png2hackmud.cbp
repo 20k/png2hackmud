@@ -4,13 +4,13 @@
 	<Project>
 		<Option title="png2hackmud" />
 		<Option pch_mode="2" />
-		<Option compiler="mingw64new" />
+		<Option compiler="gcc" />
 		<Build>
 			<Target title="Debug">
 				<Option output="bin/Debug/png2hackmud" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
-				<Option compiler="mingw64new" />
+				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
@@ -19,9 +19,10 @@
 				<Option output="bin/Release/png2hackmud" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
-				<Option compiler="mingw64new" />
+				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
+					<Add directory="deps" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />

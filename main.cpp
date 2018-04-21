@@ -603,8 +603,9 @@ int main()
     txt.setCharacterSize(10);
     txt.setString("A");
 
-    std::string fname = "mona_lisa.jpg";
-    //std::string fname = "rick2.jpg";
+    //std::string fname = "mona_lisa.jpg";
+    std::string fname = "download.jpg";
+    //std::string fname = "rick.jpg";
     ///stupid hack
     sf::Image img;
     img.loadFromFile(fname);
@@ -612,8 +613,8 @@ int main()
     int max_w = img.getSize().x;
     int max_h = img.getSize().y;
 
-    max_w /= 4.5f;
-    max_h /= 6.5f;
+    max_w /= 3.5f;
+    max_h /= 4.5f;
 
     auto chars = limited_transition_bound(fname, max_w, max_h, 300);
 
