@@ -423,7 +423,7 @@ std::vector<hackmud_char> get_full_image(const sf::Image& nimage, int max_w = 80
 
     //float erase_prob = (float)num_to_erase / colour_map.size();
 
-    float erase_prob = frac;
+    /*float erase_prob = frac;
 
     erase_prob = 0.f;
 
@@ -434,7 +434,7 @@ std::vector<hackmud_char> get_full_image(const sf::Image& nimage, int max_w = 80
             colour_map.erase(it);
             it--;
         }
-    }
+    }*/
 
     //std::map<char, vec3f> quantised_colour_map = quantise_colour_map(colour_map);
 
@@ -548,7 +548,7 @@ std::vector<hackmud_char> limited_transition_bound(const std::string& img, int m
     float invalid_val = 0.f;
 
     //while((num_transitions == -1 || num_transitions >= transition_limit))
-    for(int i=0; i<search_depth; i++)
+    //for(int i=0; i<search_depth; i++)
     {
         //float elim = (float)attempts / max_attemps;
 
@@ -604,8 +604,9 @@ int main()
     txt.setString("A");
 
     //std::string fname = "mona_lisa.jpg";
-    std::string fname = "download.jpg";
-    //std::string fname = "rick.jpg";
+    //std::string fname = "doggo.jpg";
+    //std::string fname = "download.jpg";
+    std::string fname = "tophat2.png";
     ///stupid hack
     sf::Image img;
     img.loadFromFile(fname);
@@ -613,10 +614,13 @@ int main()
     int max_w = img.getSize().x;
     int max_h = img.getSize().y;
 
-    max_w /= 3.5f;
-    max_h /= 4.5f;
+    max_w /= 6.5f;
+    max_h /= 8.5f;
 
-    auto chars = limited_transition_bound(fname, max_w, max_h, 300);
+    //max_w /= 65.5f;
+    //max_h /= 105.5f;
+
+    auto chars = limited_transition_bound(fname, max_w, max_h, 30000);
 
     for(auto& i : chars)
     {
