@@ -59,7 +59,8 @@ char col2ascii_full(vec3f c1, float brightness_scale = 1.f)
 
     //bright = sqrt(bright);
 
-    std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLJUYXzcvunxrjft|()1{}[]?_~<>ilI;,^' ";
+    std::string str = "@B%8&WM#*?_~<>;,^' ";
+    //std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLJUYXzcvunxrjft|()1{}[]?_~<>ilI;,^' ";
 
     int len = str.length();
 
@@ -97,6 +98,7 @@ char col2ascii_reduced(vec3f c1, float brightness_scale = 1.f)
 
 char col2ascii(vec3f c1, float brightness_scale)
 {
+    //return col2ascii_full(c1, brightness_scale);
     return col2ascii_reduced(c1, brightness_scale);
 }
 
@@ -251,7 +253,8 @@ struct hackmud_char
 
         if(is_newline)
         {
-            ret = ret + SPACE + "\\n";
+            ret = ret + SPACE + "\n";
+            //ret = ret + SPACE + "\\n";
         }
 
         return ret;
@@ -585,6 +588,187 @@ std::vector<hackmud_char> limited_transition_bound(const std::string& img, int m
     return chars_ret;
 }
 
+std::string stenographic_encode(const std::string& in, const std::string& str)
+{
+    std::string ret;
+
+    int msg_bit = 0;
+
+    bool is_col = false;
+    bool skip = false;
+    bool has_col = false;
+
+    for(int i=0; i < (int)in.size(); i++)
+    {
+        char c = in[i];
+
+        skip = false;
+
+        if(is_col)
+        {
+            is_col = false;
+            skip = true;
+        }
+
+        if(c == '`' && has_col && !skip)
+        {
+            is_col = false;
+            skip = true;
+            has_col = false;
+        }
+
+        if(c == '`' && !has_col && !skip)
+        {
+            is_col = true;
+            skip = true;
+            has_col = true;
+        }
+
+        if(c == '\n')
+        {
+            skip = true;
+        }
+
+        if(!skip)
+        {
+            int msg_idx = msg_bit / 8;
+
+            if(msg_idx < (int)str.size())
+            {
+                int bit = msg_bit % 8;
+
+                uint8_t in_char = str[msg_idx];
+
+                int ins = (in_char >> bit) & 1;
+
+                if(ins)
+                {
+                    c = '@';
+                }
+                else
+                {
+                    c = '#';
+                }
+            }
+
+            msg_bit++;
+        }
+
+        ret.push_back(c);
+    }
+
+    return ret;
+}
+
+std::vector<hackmud_char> stenographic_encode2(const std::vector<hackmud_char>& in, const std::string& str)
+{
+    std::vector<hackmud_char> ret;
+
+    int msg_bit = 0;
+
+    for(int i=0; i < (int)in.size(); i++)
+    {
+        hackmud_char c = in[i];
+
+        if(!c.is_newline && c.c != '\n')
+        {
+            int msg_idx = msg_bit / 8;
+
+            if(msg_idx < (int)str.size())
+            {
+                int bit = msg_bit % 8;
+
+                uint8_t in_char = str[msg_idx];
+
+                int ins = (in_char >> bit) & 1;
+
+                if(ins)
+                {
+                    c.c = '@';
+                }
+                else
+                {
+                    c.c = '#';
+                }
+            }
+        }
+
+        ret.push_back(c);
+
+        msg_bit++;
+    }
+
+    return ret;
+}
+
+std::string stenographic_decode(const std::string& in)
+{
+    std::string ret;
+
+    uint8_t cur = 0;
+
+    int counter = 0;
+
+    bool is_col = false;
+    bool has_col = false;
+
+    for(char c : in)
+    {
+        if(c == '`' && !has_col)
+        {
+            is_col = true;
+            has_col = true;
+            continue;
+        }
+
+        if(c == '`' && has_col)
+        {
+            has_col = false;
+            continue;
+        }
+
+        if(is_col)
+        {
+            is_col = false;
+            continue;
+        }
+
+        if(c == '\n')
+            continue;
+
+        int cbit = counter % 8;
+
+        if(cbit == 0 && counter != 0)
+        {
+            ret += std::string(1, cur);
+            cur = 0;
+        }
+
+        int bit = 0;
+
+        if(c == '#' || c == '@')
+        {
+            if(c == '@')
+                bit = 1;
+
+            if(bit)
+            {
+                cur |= (1 << cbit);
+            }
+        }
+        else
+        {
+            return ret;
+        }
+
+        counter++;
+    }
+
+    ret += std::string(1, cur);
+
+    return ret;
+}
+
 int main()
 {
     std::map<char, vec3f> colour_map = get_cmap();
@@ -606,7 +790,11 @@ int main()
     //std::string fname = "mona_lisa.jpg";
     //std::string fname = "doggo.jpg";
     //std::string fname = "download.jpg";
-    std::string fname = "tophat2.png";
+    //std::string fname = "chirp_rip.png";
+    //std::string fname = "nsfw/hackmud_nsfw.jpg";
+
+    std::string fname = "rick2.jpg";
+
     ///stupid hack
     sf::Image img;
     img.loadFromFile(fname);
@@ -614,25 +802,49 @@ int main()
     int max_w = img.getSize().x;
     int max_h = img.getSize().y;
 
-    max_w /= 6.5f;
-    max_h /= 8.5f;
+    ///rick
+    //max_w /= 6.5f;
+    //max_h /= 8.5f;
+
+    max_w /= 1;
+    //max_w = 90;
+    //max_w /= 2;
+    max_h /= 1;
+
+    ///setting for website
+    //max_w /= 3.5;
+
+    //max_w /= 5;
+    //max_h /= 10;
 
     //max_w /= 65.5f;
     //max_h /= 105.5f;
 
     auto chars = limited_transition_bound(fname, max_w, max_h, 30000);
 
+    //chars = stenographic_encode2(chars, "ifyou'rereadingthisthenyou'rebetteratthiskindofstuffthaniamimeanseriouslyhowareyouevendoingthis");
+
     for(auto& i : chars)
     {
         out.push_back(i.build());
     }
 
-    std::cout << std::endl;
+    std::string fully_built = "";
 
     for(auto& i : out)
     {
-        std::cout << i;
+        fully_built += i;
     }
+
+    fully_built = stenographic_encode(fully_built, "poop");
+
+    std::cout << "Decoded " << stenographic_decode(fully_built);
+
+    //fully_built = stenographic_encode(fully_built, "poop");
+
+    std::cout << std::endl;
+
+    std::cout << fully_built;
 
     std::cout << std::endl;
 
