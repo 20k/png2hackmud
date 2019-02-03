@@ -117,7 +117,6 @@ vec3f srgb_to_linear(vec3f col)
     col.x() = srgb_to_linear(col.x());
     col.y() = srgb_to_linear(col.y());
     col.z() = srgb_to_linear(col.z());
-    col.w() = srgb_to_linear(col.w());
 
     return col;
 }
