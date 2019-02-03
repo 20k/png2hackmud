@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <assert.h>
 #include "lzw.hpp"
+#include <set>
 
 using namespace std;
 
@@ -75,7 +76,7 @@ char col2ascii_full(vec3f c1, float brightness_scale = 1.f)
 
 std::string radical_anarchy_charset()
 {
-    return "$@WM#*oahkbdwmzcvunx_~;,^ ";
+    return "$@WM*#oahkbd%w=zcvu+x_~;,- ";
 }
 
 char col2ascii_radical(vec3f c1, float brightness_scale = 1.f)
@@ -827,8 +828,8 @@ size_t get_offset_of(const std::string& charset, char in)
     return -1;
 }
 
-///takes a non coloured input image, creates a decoder constant which can decode it to something else it to something else
-size_t radical_anarchy(const std::string& in, const std::string& forcible_decode)
+///takes a non coloured input image, creates a mapping string
+std::string radical_anarchy(const std::string& in, const std::string& forcible_decode)
 {
     size_t constant = 0;
     size_t modulo = 1;
@@ -841,22 +842,34 @@ size_t radical_anarchy(const std::string& in, const std::string& forcible_decode
 
     bool found = false;
 
+    std::set<char> foundchars;
+
     for(int i=1; i < without_colours.size(); i++)
     {
-        if(without_colours[i] != without_colours[i-1])
+        char test_char = without_colours[i];
+
+        if(foundchars.find(test_char) == foundchars.end())
         {
-            check_success++;
+            foundchars.insert(test_char);
         }
         else
         {
-            check_success = 0;
+            foundchars.clear();
         }
 
-        if(check_success == to_check - 1)
+        if(foundchars.size() == to_check)
         {
             found = true;
             text_offset = i - (to_check - 1);
             break;
+        }
+    }
+
+    if(found)
+    {
+        for(int i=text_offset; i < text_offset + forcible_decode.size(); i++)
+        {
+            std::cout << "f1 " << std::string(1, without_colours[i]) << std::endl;
         }
     }
 
@@ -981,9 +994,36 @@ size_t radical_anarchy(const std::string& in, const std::string& forcible_decode
         //std::cout << "lzw size? " << lzw_encode(mapping_string).size() << std::endl;
 
         assert(radical_map.size() == 26);
+
+        return mapping_string;
     }
 
-    return 0;
+    return "";
+}
+
+std::string radical_decode(const std::string& image, const std::string& mapping)
+{
+    std::map<char, char> radical;
+
+    if((mapping.size() % 2) != 0)
+        return "This is not a radical package";
+
+    for(int i=0; i < (int)mapping.size(); i += 2)
+    {
+        radical[mapping[i+1]] = mapping[i];
+    }
+
+    std::string str;
+
+    for(auto& i : image)
+    {
+        if(radical.find(i) == radical.end())
+            continue;
+
+        str += radical[i];
+    }
+
+    return str;
 }
 
 int main()
@@ -1010,21 +1050,24 @@ int main()
     //std::string fname = "chirp_rip.png";
     //std::string fname = "nsfw/hackmud_nsfw.jpg";
 
-    std::string fname = "rick4.jpg";
+    std::string fname = "test_doge.png";
 
     ///stupid hack
     sf::Image img;
     img.loadFromFile(fname);
 
-    int max_w = img.getSize().x;
-    int max_h = img.getSize().y;
+    int real_w = img.getSize().x;
+    int real_h = img.getSize().y;
+
+    int max_w = 85;
+    int max_h = (real_h * max_w) / real_w;
 
     ///rick
     //max_w /= 6.5f;
     //max_h /= 8.5f;
 
-    max_w /= 3;
-    max_h /= 3;
+    //max_w /= 3;
+    //max_h /= 3;
 
     //max_w /= 1;
     //max_w = 90;
@@ -1115,7 +1158,9 @@ int main()
 %%%%####%%%%%%*##%%%%%%%%%%%%*%**%%%########%###########%##%%%%%%%%%**#*#*##
 %%%%%###%%%%%%####%%%%%%%*%*%%%%%%######%###%####*#*####*%*#%%%%%%%%**%%*#*#)", "cunt");*/
 
-radical_anarchy(fully_built, "cunt");
+    std::string radical_mapping = radical_anarchy(fully_built, "cunt");
+
+    std::cout << "radical decode " << radical_decode(fully_built, radical_mapping);
 
     /*fully_built = stenographic_encode(fully_built, R"(`A@@``b*``g++=``A@@@`
 `A@``b%``g+``e-``g+=``z+``A@@`
