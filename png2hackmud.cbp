@@ -39,6 +39,9 @@
 			<Add option="-lsfml-window" />
 			<Add option="-lsfml-system" />
 		</Linker>
+		<Unit filename="anarchy.cpp" />
+		<Unit filename="anarchy.hpp" />
+		<Unit filename="chars.hpp" />
 		<Unit filename="lzw.hpp" />
 		<Unit filename="main.cpp" />
 		<Extensions />
