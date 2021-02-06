@@ -52,7 +52,7 @@ float col2bright(vec3f c1)
     return c1.x() * 0.299 + c1.y() * 0.587 + c1.z() * 0.114;
 }
 
-char col2ascii_full(vec3f c1, float brightness_scale = 1.f)
+char col2ascii_full(vec3f c1, float brightness_scale)
 {
     float bright = col2bright(c1) * brightness_scale;
 
@@ -75,7 +75,7 @@ char col2ascii_full(vec3f c1, float brightness_scale = 1.f)
 }
 
 
-char col2ascii_radical(vec3f c1, float brightness_scale = 1.f)
+char col2ascii_radical(vec3f c1, float brightness_scale)
 {
     float bright = col2bright(c1) * brightness_scale;
 
@@ -97,7 +97,7 @@ char col2ascii_radical(vec3f c1, float brightness_scale = 1.f)
 
 ///" .:-=+*#%@"
 
-char col2ascii_reduced(vec3f c1, float brightness_scale = 1.f)
+char col2ascii_reduced(vec3f c1, float brightness_scale)
 {
     float bright = col2bright(c1) * brightness_scale;
 
