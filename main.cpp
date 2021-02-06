@@ -54,8 +54,6 @@ float col2bright(vec3f c1)
 
 float col2bright_lin(vec3f c1)
 {
-    c1 = c1 * 255.f;
-
     return c1.x() * 0.299 + c1.y() * 0.587 + c1.z() * 0.114;
 }
 
@@ -114,8 +112,6 @@ char col2ascii_reduced(vec3f c1, float brightness_scale, vec3f min_val, vec3f ma
     //c1 = (c1 - min_val) / (max_val - min_val);
 
     float bright = col2bright_lin(scaled_c1) * brightness_scale;
-
-    bright /= 255.f;
 
     bright = clamp(bright, 0.f, 1.f);
 
