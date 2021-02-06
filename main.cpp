@@ -177,63 +177,6 @@ char get_nearest_col(sf::Color c, const std::map<char, vec3f>& colour_map)
     return fc;
 }
 
-
-char get_nearest_c(vec3f c, const std::map<char, vec3f>& colour_map)
-{
-    return get_nearest_col(sf::Color(c.x(), c.y(), c.z()), colour_map);
-}
-
-///so its graygraygray red red green green blue blue
-char get_nearest_col_q(sf::Color c, const std::map<char, vec3f>& colour_map)
-{
-    int w = 0;
-    float h = c.r;
-
-    if(c.g > h)
-    {
-        w = 1;
-        h = c.g;
-    }
-
-    if(c.b > h)
-    {
-        w = 2;
-        h = c.b;
-    }
-
-    std::vector<char> cols;
-
-    cols.push_back(get_nearest_c({0,0,0}, colour_map));
-    cols.push_back(get_nearest_c({128, 128, 128}, colour_map));
-    cols.push_back(get_nearest_c({255, 255, 255}, colour_map));
-
-
-    cols.push_back(get_nearest_c({128, 0, 0}, colour_map));
-    cols.push_back(get_nearest_c({255, 0, 0}, colour_map));
-
-    cols.push_back(get_nearest_c({0, 128, 0}, colour_map));
-    cols.push_back(get_nearest_c({0, 255, 0}, colour_map));
-
-    cols.push_back(get_nearest_c({0, 0, 128}, colour_map));
-    cols.push_back(get_nearest_c({0, 0, 255}, colour_map));
-
-    float brightness = 0.299*c.r + 0.587*c.g + 0.114*c.b;
-    int blevel = 0;
-
-    if(brightness > (128 + 255)/2.f)
-    {
-        blevel = 1;
-    }
-
-    if(brightness < 128/2.f)
-    {
-        return cols[0];
-    }
-
-
-    return cols[w*2 + blevel + 3];
-}
-
 #define SPACE ""
 
 struct hackmud_char
@@ -299,71 +242,7 @@ struct hackmud_char
             //printf("%c %c ", prev.colour, colour);
         }
     }
-
-    void eliminate_single(hackmud_char& prev, hackmud_char& forw)
-    {
-        bool double_equal = false;
-
-        if(!prev.is_newline && !forw.is_newline)
-        {
-            if(prev.colour != colour && forw.colour != colour)
-                double_equal = true;
-        }
-
-        if(prev.is_newline && !forw.is_newline)
-        {
-            if(colour != forw.colour)
-                double_equal = true;
-        }
-
-        if(!prev.is_newline && forw.is_newline)
-        {
-            if(colour != prev.colour)
-                double_equal = true;
-        }
-
-
-        //if(prev.colour != colour && forw.colour != colour)
-        if(double_equal)
-        {
-            if(!prev.is_newline)
-                colour = prev.colour;
-            else
-                colour = forw.colour;
-        }
-    }
 };
-
-
-std::map<char, vec3f> quantise_colour_map(std::map<char, vec3f>& cmap)
-{
-    int grays = 3;
-
-    std::vector<char> cols;
-
-    cols.push_back(get_nearest_c({0,0,0}, cmap));
-    cols.push_back(get_nearest_c({128, 128, 128}, cmap));
-    cols.push_back(get_nearest_c({255, 255, 255}, cmap));
-
-
-    cols.push_back(get_nearest_c({128, 0, 0}, cmap));
-    cols.push_back(get_nearest_c({255, 0, 0}, cmap));
-
-    cols.push_back(get_nearest_c({0, 128, 0}, cmap));
-    cols.push_back(get_nearest_c({0, 255, 0}, cmap));
-
-    cols.push_back(get_nearest_c({0, 0, 128}, cmap));
-    cols.push_back(get_nearest_c({0, 0, 255}, cmap));
-
-    std::map<char, vec3f> cm;
-
-    for(auto& i : cols)
-    {
-        cm[i] = cmap[i];
-    }
-
-    return cm;
-}
 
 std::map<char, vec3f> get_cmap()
 {
@@ -427,42 +306,9 @@ std::map<char, vec3f> get_cmap()
     return colour_map;
 }
 
-std::vector<hackmud_char> get_full_image(const sf::Image& nimage, int max_w = 80, int max_h = 50, float frac = 0.f)
+std::vector<hackmud_char> get_full_image(const sf::Image& nimage, int max_w = 80, int max_h = 50)
 {
     std::map<char, vec3f> colour_map = get_cmap();
-
-    int num_to_erase = 0;
-
-    //float erase_prob = (float)num_to_erase / colour_map.size();
-
-    /*float erase_prob = frac;
-
-    erase_prob = 0.f;
-
-    for(auto it = colour_map.begin(); it != colour_map.end(); it++)
-    {
-        if(randf_s(0.f, 1.f) < erase_prob)
-        {
-            colour_map.erase(it);
-            it--;
-        }
-    }*/
-
-    //std::map<char, vec3f> quantised_colour_map = quantise_colour_map(colour_map);
-
-    //colour_map = quantised_colour_map;
-
-    /*for(auto& i : colour_map)
-    {
-        char tl = tolower(i.first);
-
-        if(tl == i.first)
-            continue;
-
-        colour_map[tl] = i.second/2.f;
-    }*/
-
-    //nimage.saveToFile("Fname.png");
 
     std::vector<hackmud_char> chars;
 
@@ -501,15 +347,6 @@ std::vector<hackmud_char> get_full_image(const sf::Image& nimage, int max_w = 80
         }
     }
 
-    ///appears to be fixed in live
-    #ifdef FIX_ONECHARACTER_BUG
-    for(int i=1; i<chars.size()-1; i++)
-    {
-        if(SPACE == "")
-            chars[i].eliminate_single(chars[i-1], chars[i+1]);
-    }
-    #endif
-
     for(int i=1; i<chars.size(); i++)
     {
         chars[i].try_merge(chars[i-1]);
@@ -525,6 +362,8 @@ std::vector<hackmud_char> limited_transition_bound(const std::string& img, int m
 
     sf::Image image;
     image.loadFromFile(img.c_str());
+
+    chars_ret = get_full_image(image, max_w, max_h);
 
     sf::RenderTexture rtex;
     rtex.setSmooth(true);
@@ -547,8 +386,6 @@ std::vector<hackmud_char> limited_transition_bound(const std::string& img, int m
     nimage = rtex.getTexture().copyToImage();
 
     nimage.saveToFile("TOUT.png");
-
-    out.clear();
 
     for(auto& i : chars_ret)
     {
