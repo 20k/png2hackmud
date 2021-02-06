@@ -45,7 +45,7 @@ float col2bright(vec3f c1)
 {
     c1 = c1 / 255.f;
 
-    c1 = pow(c1, 1/2.2f);
+    c1 = srgb_to_lin(c1);
 
     c1 = c1 * 255.f;
 
@@ -105,6 +105,8 @@ char col2ascii_reduced(vec3f c1, float brightness_scale = 1.f)
 
     bright = clamp(bright, 0.f, 1.f);
 
+    bright = lin_to_srgb(bright);
+
     //std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,^'. ";
 
     std::string str = " -+=*%#@";
@@ -128,8 +130,8 @@ char col2ascii(vec3f c1, float brightness_scale)
 
 float get_col_err(vec3f c1, vec3f c2)
 {
-    vec3f linear_srgb_c1 = lin_to_srgb(c1/255.f);
-    vec3f linear_srgb_c2 = lin_to_srgb(c2/255.f);
+    vec3f linear_srgb_c1 = srgb_to_lin(c1/255.f);
+    vec3f linear_srgb_c2 = srgb_to_lin(c2/255.f);
 
     vec3f lab_c1 = linear_rgb_to_lab(linear_srgb_c1);
     vec3f lab_c2 = linear_rgb_to_lab(linear_srgb_c2);
