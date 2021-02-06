@@ -357,13 +357,11 @@ std::vector<hackmud_char> get_full_image(const sf::Image& nimage, int max_w = 80
 
 std::vector<hackmud_char> limited_transition_bound(const std::string& img, int max_w, int max_h)
 {
-    std::vector<std::string> out;
     std::vector<hackmud_char> chars_ret;
 
     sf::Image image;
     image.loadFromFile(img.c_str());
 
-    chars_ret = get_full_image(image, max_w, max_h);
 
     sf::RenderTexture rtex;
     rtex.setSmooth(true);
@@ -385,12 +383,9 @@ std::vector<hackmud_char> limited_transition_bound(const std::string& img, int m
     sf::Image nimage;
     nimage = rtex.getTexture().copyToImage();
 
-    nimage.saveToFile("TOUT.png");
+    chars_ret = get_full_image(nimage, max_w, max_h);
 
-    for(auto& i : chars_ret)
-    {
-        out.push_back(i.build());
-    }
+    nimage.saveToFile("TOUT.png");
 
     return chars_ret;
 }
