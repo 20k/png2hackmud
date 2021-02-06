@@ -128,8 +128,8 @@ char col2ascii(vec3f c1, float brightness_scale)
 
 float get_col_err(vec3f c1, vec3f c2)
 {
-    vec3f linear_srgb_c1 = pow(c1/255.f, 1.f/2.2f);
-    vec3f linear_srgb_c2 = pow(c2/255.f, 1.f/2.2f);
+    vec3f linear_srgb_c1 = lin_to_srgb(c1/255.f);
+    vec3f linear_srgb_c2 = lin_to_srgb(c2/255.f);
 
     vec3f lab_c1 = linear_rgb_to_lab(linear_srgb_c1);
     vec3f lab_c2 = linear_rgb_to_lab(linear_srgb_c2);
