@@ -688,47 +688,6 @@ std::string stenographic_encode(const std::string& in, const std::string& str)
     return ret;
 }
 
-std::vector<hackmud_char> stenographic_encode2(const std::vector<hackmud_char>& in, const std::string& str)
-{
-    std::vector<hackmud_char> ret;
-
-    int msg_bit = 0;
-
-    for(int i=0; i < (int)in.size(); i++)
-    {
-        hackmud_char c = in[i];
-
-        if(!c.is_newline && c.c != '\n')
-        {
-            int msg_idx = msg_bit / 8;
-
-            if(msg_idx < (int)str.size())
-            {
-                int bit = msg_bit % 8;
-
-                uint8_t in_char = str[msg_idx];
-
-                int ins = (in_char >> bit) & 1;
-
-                if(ins)
-                {
-                    c.c = '@';
-                }
-                else
-                {
-                    c.c = '#';
-                }
-            }
-        }
-
-        ret.push_back(c);
-
-        msg_bit++;
-    }
-
-    return ret;
-}
-
 std::string strip_colours(const std::string& in)
 {
     std::string ret;
@@ -828,6 +787,39 @@ size_t get_offset_of(const std::string& charset, char in)
     return -1;
 }
 
+struct radical_character
+{
+    char one = 0;
+    char two = 0;
+};
+
+std::string radical_shuffle(const std::string& in)
+{
+    std::vector<radical_character> tin;
+
+    if((in.size() % 2) != 0)
+        return "";
+
+    for(int i=0; i < (int)in.size(); i+=2)
+    {
+        tin.push_back({in[i], in[i+1]});
+    }
+
+    std::random_device rd;
+    std::mt19937 g(1);
+
+    std::shuffle(tin.begin(), tin.end(), g);
+
+    std::string out;
+
+    for(auto& i : tin)
+    {
+        out += std::string(1, i.one) + std::string(1, i.two);
+    }
+
+    return out;
+}
+
 ///takes a non coloured input image, creates a mapping string
 std::string radical_anarchy(const std::string& in, const std::string& forcible_decode)
 {
@@ -856,6 +848,9 @@ std::string radical_anarchy(const std::string& in, const std::string& forcible_d
         {
             foundchars.clear();
         }
+
+        if(test_char == '\n')
+            foundchars.clear();
 
         if(foundchars.size() == to_check)
         {
@@ -946,8 +941,6 @@ std::string radical_anarchy(const std::string& in, const std::string& forcible_d
             mapping_string += std::string(1, i.first) + std::string(1, i.second);
         }
 
-        std::cout << "RADICAL ANARCHY HAS BEEN ACHIEVED: " << mapping_string << std::endl;
-
         int polynomial_offset = 0;
         std::string visual_polynomial;
 
@@ -995,7 +988,7 @@ std::string radical_anarchy(const std::string& in, const std::string& forcible_d
 
         assert(radical_map.size() == 26);
 
-        return mapping_string;
+        return radical_shuffle(mapping_string);
     }
 
     return "";
@@ -1013,17 +1006,56 @@ std::string radical_decode(const std::string& image, const std::string& mapping)
         radical[mapping[i+1]] = mapping[i];
     }
 
+    std::string stripped = strip_colours(image);
+
     std::string str;
 
-    for(auto& i : image)
+    for(auto& i : stripped)
     {
-        if(radical.find(i) == radical.end())
+        if(i == '\n')
+        {
+            str += i;
             continue;
+        }
+
+        if(radical.find(i) == radical.end())
+        {
+            str += 'X';
+            continue;
+        }
 
         str += radical[i];
     }
 
     return str;
+}
+
+std::string radical_encode(const std::vector<hackmud_char>& image, const std::string& text, const std::string& radical_mapping)
+{
+    std::string ret;
+
+    std::vector<hackmud_char> mimage = image;
+
+    int idx = 0;
+
+    std::map<char, char> radical_map;
+
+    for(int i=0; i < (int)radical_mapping.size(); i+=2)
+    {
+        radical_map[radical_mapping[i]] = radical_mapping[i+1];
+    }
+
+    for(; idx < text.size() && idx < mimage.size(); idx++)
+    {
+        mimage[idx].c = radical_map[text[idx]];
+    }
+
+    for(auto& i : mimage)
+    {
+        ret += i.build();
+    }
+
+    return ret;
 }
 
 int main()
@@ -1050,7 +1082,9 @@ int main()
     //std::string fname = "chirp_rip.png";
     //std::string fname = "nsfw/hackmud_nsfw.jpg";
 
-    std::string fname = "test_doge.png";
+    //std::string fname = "test_doge.png";
+
+    std::string fname = "rick.jpg";
 
     ///stupid hack
     sf::Image img;
@@ -1059,7 +1093,7 @@ int main()
     int real_w = img.getSize().x;
     int real_h = img.getSize().y;
 
-    int max_w = 85;
+    int max_w = 15;
     int max_h = (real_h * max_w) / real_w;
 
     ///rick
@@ -1099,107 +1133,22 @@ int main()
         fully_built += i;
     }
 
-    /*radical_anarchy(R"(%*%%%%***%%%%%%**%******%**##%%%%###########################################
-%%%%%%%%%%%%%%%**%**%%%%%*==#%%%%###########################################
-%%%%%%%%%%%%%*%*%%%%%%#%**=++#%%%##########################%%**%%###########
-%%%%%%%**%%***%%%#%####%**=+++#%%#########################%#=++++%##########
-%%%******%***%%%%%#####%%*=++=+#%########################%#%**+  =##########
-********%%%%%%%%%#####%%**=++=+=*#########################*=**+  -##########
-***%%%%%%%%%##########%%***=+++++=#%##################%%%=+=+=++- -#########
-%%#%%%################%%*++***********=**%%%%%#######%==+ =*+-+----#########
-###########%%%%%##%#%%**=*************=%****=%**==***==+-+++--  -+-+########
-#######%%##%%%%%%%%*%***%%%*****==*=****=*******=*+++++- +++-    -+-########
-####%#%%%%%%***====**%%%%##%***=*=====**=**********-++  -++      -+-@#######
-%%%%%****=+++=++*=*%%@%%%%%***=**===**====*******===+   ++++-    -+-%#######
-*=**=+++++++=***%%%%%%%%%%#*=*====*==*==*%%%==*======*  -+++     -++*#######
-+++++++++++=*%%%%%%@#%%%%#***=+======%*%*%%%*%==**====*- ++-     +++*#######
-++++++===**%%%%%%%%@@%%%%#%==+*==*==%%%***=**%=%=====**=+++     -+=+########
-+++++==***%%%%%%%##%%%%%%#**+==%%%%%%%%%*%**====**=******+     -==++%#######
-+++==***%%%%%%%%%##%%%%%%*=++*=%%#%%%%%%%%*=**=*==********=+   --++-*#######
-++==***%%%%%%%%%#%####%%#%=+*=%%##%%#%%%%*=*=***=******%****++++++ +%%######
-++**%%%#%%%%#%%#%+=%*#%#**=++*#%%##**#%%%%=*=***=****==*******++++==*%######
-***%%%#%%%###%%+    =*#*==*=*=#*%%%###**%=*====%****%*******%*=+++--+%%#####
-%###*#%%%#@@###%     #*****=%%####%###**==+++%=*******#*****%***++- -*#%####
-%%%%%%%%#@####*#    **%%#%##*%%#%%=   -*%*=+**==*%**********#****+  -=*%####
-%%%%#%%#####%%*=   %#%%%####*=*=+  %#   ++*=%%%******************=+  +*%####
-%%%%%%%#@###%##*-*%###%%%%%#==+   #       +=%%%%%#***************==+-+*#####
-%%%%%%######%###%%%%%%%%%%@#*+-   *      *%%%##########%#%********=+++**%###
-%%%%%%######%%%%%%%%%%%%%%#**=*=        ####*%%%%%*%#####*###%%****=+==*%###
-%%%%%########%#%%@%%%*%%%%##**=*%**-+=#*##%%%%%%%%%#**%%%*####**#***===*%###
-%##%%#######%*===%#*#%%%%%##%***#%%%%##*##%%%%%%%##*%%%%%%*%%%**#%****==%###
-##%%%######         %#%%%%#*####%%%***#*#*%%%%%%%%%%%%%%%%%%%%%%##**==*=####
-#%#%##%###+          +%%%%%%###*%%%%#*%*%##%%%%%%%%%%%%%%**%%%%#%%#**=**#%##
-#%#%##%%##*          -%%%%%%#%#%%%%%%%%%##%%%%%%%%%%%%%%%%%%%%%%%**#**=**%##
-%#######%%-+         =##%%%*%%*%%%%%%%%%%%%%%#%%*%%%***%%%%%%%%%%#%#**=**###
-##*#####%%=          *%##%##%###%%%%%%%%%%%%%%%%%*****%%%%%%%%%%####*****#%#
-##*%%#%%#%+         =**###%%###%%%%##%%%%%%%*#%%*##**%%%%%%**#######===**#%#
-######%%#*+         =%%%%%##%###%##%%%*%%%%%#*%**#*%%%%%***%**####%**==***@#
-##%####%#*+        +-**%%#%%%#%########**%#########*#%*%######%%#%%%===***#%
-##%%###*%%+         =-=%**%%%%*%%################*#**%*#####%%%##%%=====**#%
-##%##%%%%%%          +%**%%#*****%###%%%##*######%#######%%######%%===***=*@
-##%%##%%%%#-           =*=-     *%%####%##*##%########%#######*#%%**+====**#
-#%%####%%%#%*                - *%#%#%##**#%###***##############%%%***=*=***#
-######%%%%%*%*  ----    ---+=+%%######################*%%%%%%%*###%=*==**=*#
-####%%##%%%**#=-+--**=+**+=***%####%%%##############***%%%%#####%%========*#
-####%##%%%%%%%##%%%*%**%%%%######%##%%%%###**####**##%*%###***#%%==+**=***=*
-#####%%%%%%%%*%%########%%%%%%%%%%%%%%#%###*#################%%*=*=*==++=*=*
-#####%%%%%%%%%*%%##%%%%#%%%%%%%*%%%%%#######################%%%=*=*++=+++==*
-#####%%%%%%%%%%########%#%%%%%%%%%%#*###*########*%%*#####%%**==++=*=++++===
-#####%%%%%%%%%########%%%%%%%%%%%%%#*%*########*%##*#####%%%==*====++++++===
-#####%%%%%%%%%*#######%%%%%%%%%%%%%############*###**####%%%%=====++++++=***
-####%%%*%%%%%*%#######%%%%%%%%%%%%%##%%####*%*#####%###%%%*%*===+++++++=*==*
-%%##%%%%%###%**#####%#%#%%%%%%%%%%%%%%##%%*###*###%%%#%%%%**=*=+++++++==*=**
-%%%%%%%%%*%*#########%#%%%%%%%%%%%%%%%###*%######%###%%%%%**==*++++++**==**#
-%%%%%%%%%%#%##%#######%%%%%%%*%%%%%%%%##%%#####%%*%#%%##%%*==*===++==***####
-%%%%%%%%%%%###**%###%%##%%%%%%%%%%%%%%%%%%%%%%%%########%*====+=++=*%%#####%
-%%%%#%%%%%%%###%%%%%%%**%%%%%%%%%*%%%%%%=%%%%%%###%%%%##%**==*===*%%####**#%
-%%%%##%%%%%#####%%*=*+***+*+=*+******%%*%%%##%%#*%##%#%%*%%%*=*########*%*#%
-%%%%##%%%%%%%####%%%%****+===++****%**%###########%%%###%%%###%#####%%*%%##*
-%%%%####%%%%%%*##%%%%%%%%%%%%*%**%%%########%###########%##%%%%%%%%%**#*#*##
-%%%%%###%%%%%%####%%%%%%%*%*%%%%%%######%###%####*#*####*%*#%%%%%%%%**%%*#*#)", "cunt");*/
-
     std::string radical_mapping = radical_anarchy(fully_built, "cunt");
+
+    std::cout << "RADICAL ANARCHY ACHIEVED " << radical_mapping << std::endl;
 
     std::cout << "radical decode " << radical_decode(fully_built, radical_mapping);
 
-    /*fully_built = stenographic_encode(fully_built, R"(`A@@``b*``g++=``A@@@`
-`A@``b%``g+``e-``g+=``z+``A@@`
-`A@@``g@``G%``g@*+``C#``A@`
-`A@@``E%``g@*@=``C%``A@`
-`A@@``g@#%%+``m+``b=`
-`K#``g%+``A@``g%=``b==``c*`
-`g#``k-``z+``b=+``z+``c%``b*``c%`")");*/
 
-    fully_built = stenographic_encode(fully_built, "POOP POOP POOP");
+    std::string radical_encoded = radical_encode(chars, "urasmellypoobumbandihopeyou'remadeofcheese", radical_mapping);
 
-    /*fully_built = stenographic_encode(fully_built, R"(`A##``g##``k@``C@``A@#`
-`A@``b@``g@@#@``c@``A#`
-`A@@``g@@#@@``A#`
-`A##``g##@@``C@#`
-`A@``g##``K@``g@@``b@``c#`
-`g#``b+``z+``b*``c*``b%=``c%`)");*/
+    std::cout << "RADICAL REENCODE " << radical_encoded << std::endl;
+
+    std::cout << "REDECODED " << radical_decode(radical_encoded, radical_mapping) << std::endl;
+
+    //fully_built = stenographic_encode(fully_built, "POOP POOP POOP");
 
     //std::cout << "Decoded " << stenographic_decode(fully_built);
-
-    /*@@####@#@#@#@#@#
-#@@@##@###@#@#@#
-@@####@#@#@#@#@#
-#@@@##@###@#@#@#
-@@@#@##%**=++-+*
-@@%#=*%##=-+++*%
-#@%==##****==*%*
-%%+*=+==*+***%%%
-#*-+-+***=+%+**%*/
-
-    /*std::cout << "sean shitpost " << stenographic_decode(R"(@@####@#@#@#@#@#
-#@@@##@###@#@#@#
-@@####@#@#@#@#@#
-#@@@##@###@#@#@#
-@@@#@##%**=++-+*
-@@%#=*%##=-+++*%
-#@%==##****==*%*
-%%+*=+==*+***%%%
-#*-+-+***=+%+**%)");*/
 
     //fully_built = stenographic_encode(fully_built, "poop");
 
