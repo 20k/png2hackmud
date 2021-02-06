@@ -149,12 +149,7 @@ char get_nearest_col(sf::Color c, const std::map<char, vec3f>& colour_map)
 {
     vec3f sf_c = {c.r, c.g, c.b};
 
-    //sf_c = pow(sf_c, 2.2f);
-
-
-    ///we should probably figure out how to make this gamma correct or w/e
     float min_err = 50;
-    float min_err_sq = min_err * min_err;
 
     char fc = 'A';
     float found_err = FLT_MAX;
