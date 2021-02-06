@@ -52,6 +52,13 @@ float col2bright(vec3f c1)
     return c1.x() * 0.299 + c1.y() * 0.587 + c1.z() * 0.114;
 }
 
+float col2bright_lin(vec3f c1)
+{
+    c1 = c1 * 255.f;
+
+    return c1.x() * 0.299 + c1.y() * 0.587 + c1.z() * 0.114;
+}
+
 char col2ascii_full(vec3f c1, float brightness_scale)
 {
     float bright = col2bright(c1) * brightness_scale;
@@ -74,7 +81,6 @@ char col2ascii_full(vec3f c1, float brightness_scale)
     return str[str.length() - id - 1];
 }
 
-
 char col2ascii_radical(vec3f c1, float brightness_scale)
 {
     float bright = col2bright(c1) * brightness_scale;
@@ -96,10 +102,18 @@ char col2ascii_radical(vec3f c1, float brightness_scale)
 }
 
 ///" .:-=+*#%@"
-
-char col2ascii_reduced(vec3f c1, float brightness_scale)
+char col2ascii_reduced(vec3f c1, float brightness_scale, vec3f min_val, vec3f max_val)
 {
-    float bright = col2bright(c1) * brightness_scale;
+    vec3f lin_c1 = srgb_to_lin(c1);
+    vec3f lin_min = srgb_to_lin(min_val);
+    vec3f lin_max = srgb_to_lin(max_val);
+
+    vec3f scaled_c1 = (lin_c1 - lin_min) / (lin_max - lin_min);
+
+    ///scales from 0 to 1
+    //c1 = (c1 - min_val) / (max_val - min_val);
+
+    float bright = col2bright_lin(scaled_c1) * brightness_scale;
 
     bright /= 255.f;
 
@@ -115,17 +129,17 @@ char col2ascii_reduced(vec3f c1, float brightness_scale)
 
     int len = str.length();
 
-    int id = round(bright * (len - 1));
+    int id = floor(bright * (len - 1));
 
     id = clamp(id, 0, len-1);
 
     return str[id];
 }
 
-char col2ascii(vec3f c1, float brightness_scale)
+char col2ascii(vec3f c1, float brightness_scale, vec3f min_val, vec3f max_val)
 {
     //return col2ascii_full(c1, brightness_scale);
-    return col2ascii_reduced(c1, brightness_scale);
+    return col2ascii_reduced(c1, brightness_scale, min_val, max_val);
 }
 
 float get_col_err(vec3f c1, vec3f c2)
@@ -238,6 +252,25 @@ std::vector<hackmud_char> get_full_image(const sf::Image& nimage, int max_w = 80
 
     std::vector<hackmud_char> chars;
 
+    vec3f min_val = {255, 255, 255};
+    vec3f max_val = {0,0,0};
+
+    for(int y=0; y<nimage.getSize().y; y++)
+    {
+        for(int x=0; x<nimage.getSize().x; x++)
+        {
+            sf::Color col = nimage.getPixel(x, y);
+
+            min_val.x() = std::min(min_val.x(), (float)col.r);
+            min_val.y() = std::min(min_val.y(), (float)col.g);
+            min_val.z() = std::min(min_val.z(), (float)col.b);
+
+            max_val.x() = std::max(max_val.x(), (float)col.r);
+            max_val.y() = std::max(max_val.y(), (float)col.g);
+            max_val.z() = std::max(max_val.z(), (float)col.b);
+        }
+    }
+
     for(int y=0; y<nimage.getSize().y; y++)
     {
         for(int x=0; x<nimage.getSize().x; x++)
@@ -260,7 +293,7 @@ std::vector<hackmud_char> get_full_image(const sf::Image& nimage, int max_w = 80
 
             hc.is_newline = x == nimage.getSize().x - 1;
             hc.c = '@';
-            hc.c = col2ascii({col.r, col.g, col.b}, brightness_scale);
+            hc.c = col2ascii({col.r, col.g, col.b}, brightness_scale, min_val, max_val);
 
             hc.colour = nearest_col;
 
