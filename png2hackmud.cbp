@@ -32,6 +32,7 @@
 		<Compiler>
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
+			<Add directory="deps" />
 		</Compiler>
 		<Linker>
 			<Add option="-lsfml-graphics" />
@@ -40,11 +41,6 @@
 		</Linker>
 		<Unit filename="lzw.hpp" />
 		<Unit filename="main.cpp" />
-		<Extensions>
-			<code_completion />
-			<envvars />
-			<debugger />
-			<fortran_project />
-		</Extensions>
+		<Extensions />
 	</Project>
 </CodeBlocks_project_file>

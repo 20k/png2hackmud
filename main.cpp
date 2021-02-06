@@ -365,25 +365,6 @@ std::map<char, vec3f> quantise_colour_map(std::map<char, vec3f>& cmap)
     return cm;
 }
 
-int get_num_transitions(const std::vector<std::string>& out)
-{
-    int c = 0;
-
-    for(auto& i : out)
-    {
-        size_t n = std::count(i.begin(), i.end(), '`');
-
-        c += n;
-    }
-
-    if(c % 2 != 0)
-    {
-        printf("warning, mismatched `\n");
-    }
-
-    return c / 2;
-}
-
 std::map<char, vec3f> get_cmap()
 {
     std::map<char, vec3f> colour_map;
@@ -537,19 +518,13 @@ std::vector<hackmud_char> get_full_image(const sf::Image& nimage, int max_w = 80
     return chars;
 }
 
-std::vector<hackmud_char> limited_transition_bound(const std::string& img, int max_w, int max_h, int transition_limit = 400)
+std::vector<hackmud_char> limited_transition_bound(const std::string& img, int max_w, int max_h)
 {
-    int num_transitions = -1;
-
-    int max_attemps = 50;
-    int attempts = 0;
-
     std::vector<std::string> out;
     std::vector<hackmud_char> chars_ret;
 
     sf::Image image;
     image.loadFromFile(img.c_str());
-
 
     sf::RenderTexture rtex;
     rtex.setSmooth(true);
@@ -573,44 +548,11 @@ std::vector<hackmud_char> limited_transition_bound(const std::string& img, int m
 
     nimage.saveToFile("TOUT.png");
 
-    int search_depth = 5;
+    out.clear();
 
-    float valid_val = 1.f;
-    float invalid_val = 0.f;
-
-    //while((num_transitions == -1 || num_transitions >= transition_limit))
-    //for(int i=0; i<search_depth; i++)
+    for(auto& i : chars_ret)
     {
-        //float elim = (float)attempts / max_attemps;
-
-        float elim = (valid_val + invalid_val) / 2.f;
-
-        chars_ret = get_full_image(nimage, max_w, max_h, elim);
-
-        out.clear();
-
-        for(auto& i : chars_ret)
-        {
-            out.push_back(i.build());
-        }
-
-        num_transitions = get_num_transitions(out);
-
-        printf("na %f %i\n", elim, num_transitions);
-
-        if(num_transitions < transition_limit)
-        {
-            valid_val = elim;
-        }
-        if(num_transitions >= transition_limit)
-        {
-            invalid_val = elim;
-        }
-
-        if(num_transitions > transition_limit - 30 && num_transitions < transition_limit)
-        {
-            return chars_ret;
-        }
+        out.push_back(i.build());
     }
 
     return chars_ret;
@@ -1117,11 +1059,11 @@ int main()
     //max_w /= 65.5f;
     //max_h /= 105.5f;
 
-    auto chars = limited_transition_bound(fname, max_w, max_h, 30000);
+    auto chars = limited_transition_bound(fname, max_w, max_h);
 
     //chars = stenographic_encode2(chars, "ifyou'rereadingthisthenyou'rebetteratthiskindofstuffthaniamimeanseriouslyhowareyouevendoingthis");
 
-    for(auto& i : chars)
+    /*for(auto& i : chars)
     {
         out.push_back(i.build());
     }
@@ -1156,11 +1098,7 @@ int main()
 
     std::cout << fully_built;
 
-    std::cout << std::endl;
-
-    int num_transitions = get_num_transitions(out);
-
-    std::cout << "num transitions " << num_transitions << std::endl;
+    std::cout << std::endl;*/
 
     sf::RenderWindow win;
     win.create(sf::VideoMode(1600, 1000), "heheheh");
