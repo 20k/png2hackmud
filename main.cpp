@@ -119,7 +119,9 @@ char col2ascii_reduced(vec3f c1, float brightness_scale, vec3f min_val, vec3f ma
 
     //std::string str = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,^'. ";
 
-    std::string str = " -+=*%#@";
+    //std::string str = " -+=*%#@";
+
+    std::string str = " .,:;irsXA253hMHGS#9B&@";
 
     //std::string str = " ,-=+*%#@";
 
@@ -146,13 +148,7 @@ float get_col_err(vec3f c1, vec3f c2)
     vec3f lab_c1 = linear_rgb_to_lab(linear_srgb_c1);
     vec3f lab_c2 = linear_rgb_to_lab(linear_srgb_c2);
 
-    vec3f r1 = lab_c1 - lab_c2;
-
-    return dot(r1, r1);
-
-    vec3f rel = c1 - c2;
-
-    return dot(rel, rel);
+    return (lab_c1 - lab_c2).length();
 }
 
 char get_nearest_col(sf::Color c, const std::map<char, vec3f>& colour_map)
